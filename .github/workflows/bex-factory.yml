@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Release tag to publish
+        description: Base release tag (run number will be appended)
         required: false
-        default: factory-latest
+        default: factory
       release_name:
-        description: Release title to publish
+        description: Base release title (run number will be appended)
         required: false
         default: Bloomee Plugin Factory
 
@@ -29,6 +29,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      # --- NEW STEP: Define unique release tag and name ---
+      - name: Set Release Details
+        id: vars
+        shell: bash
+        run: |
+          TAG="${{ inputs.release_tag || 'bloomfactory-v' }}${{ github.run_number }}"
+          NAME="${{ inputs.release_name || 'Bloomee Plugin Factory' }} #${{ github.run_number }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Prepared Release: $NAME ($TAG)"
+
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -42,10 +53,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Attempting to fetch pre-built cargo-component..."
-          # Download the latest Linux x86_64 tarball from the official bytecodealliance repo
           if gh release download --repo bytecodealliance/cargo-component --pattern "*x86_64-unknown-linux-gnu.tar.gz" --dir .; then
             tar -xzf *x86_64-unknown-linux-gnu.tar.gz
-            # Locate the extracted binary, make it executable, and move it to cargo's bin directory
             find . -type f -name "cargo-component" -exec chmod +x {} \; -exec mv {} ~/.cargo/bin/ \;
             rm *x86_64-unknown-linux-gnu.tar.gz
             echo "Successfully installed pre-built cargo-component."
@@ -86,7 +95,8 @@ jobs:
         shell: bash
         run: |
           stamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          base="https://github.com/${{ github.repository }}/releases/download/${{ inputs.release_tag || 'factory-latest' }}"
+          # Using the dynamic tag generated in the 'vars' step
+          base="https://github.com/${{ github.repository }}/releases/download/${{ steps.vars.outputs.tag }}"
           jq --arg base "$base" --arg stamp "$stamp" '
             .generated_at = $stamp
             | .plugins |= map(. + {
@@ -102,12 +112,16 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          tag="${{ inputs.release_tag || 'factory-latest' }}"
-          name="${{ inputs.release_name || 'Bloomee Plugin Factory' }}"
+          # Using the dynamic tag and name generated in the 'vars' step
+          tag="${{ steps.vars.outputs.tag }}"
+          name="${{ steps.vars.outputs.name }}"
+
+          # Delete only if a user manually triggers a re-run of the exact same job number
           gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+
           gh release create "$tag" plugins/*.bex bex-factory.json \
             --title "$name" \
-            --notes "Latest auto-built Bloomee plugins"
+            --notes "Auto-built Bloomee plugins for run ${{ github.run_number }}"
 
       - name: Commit updated bex-factory.json
         if: steps.packed.outputs.bex_count != '0'
@@ -120,5 +134,5 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@users.noreply.github.com
           git add bex-factory.json
-          git commit -m "chore: update bexfactory index [skip ci]"
+          git commit -m "chore: update bexfactory index for run ${{ github.run_number }} [skip ci]"
           git push
