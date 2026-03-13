@@ -1,0 +1,12 @@
+{
+  "manifest_version": "1.0",
+  "id": "chart-provider.bloomfactory.billboard",
+  "name": "billboard",
+  "thumbnail_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Billboard-charts-logo-2018-billboard-1548-1024x677.jpg/330px-Billboard-charts-logo-2018-billboard-1548-1024x677.jpg",
+  "version": "1",
+  "type": "chart-provider",
+  "publisher": {"name": "bloomfactory"},
+  "description": "Billboard chart data provider for Bloomee",
+  "created_at": "2026-03-13T06:47:10.5788495Z",
+  "last_updated": "2026-03-13T06:47:10.5788495Z"
+}

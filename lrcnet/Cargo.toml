@@ -1,0 +1,26 @@
+[package]
+name = "lrcnet"
+version = "0.1.0"
+edition = "2021"
+description = "BEX Implementation of lrclib"
+
+[dependencies]
+bex-core = { path = "bex-core", features = ["lyrics"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+urlencoding = "2.1"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "component:lyrics-provider"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+debug = false

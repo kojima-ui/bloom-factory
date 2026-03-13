@@ -1,0 +1,12 @@
+# --- bex factory managed ---
+/plugins/
+/target/
+**/target/
+*.bex
+/bex
+/bex.exe
+/bex-*.exe
+/bex-*.zip
+Thumbs.db
+.DS_Store
+# --- /bex factory managed ---

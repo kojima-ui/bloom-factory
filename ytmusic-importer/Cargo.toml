@@ -1,0 +1,25 @@
+[package]
+name = "ytmusic-importer"
+version = "0.1.0"
+edition = "2021"
+description = "Import YouTube and YouTube Music playlists/albums into Bloomee"
+
+[dependencies]
+bex-core = { path = "bex-core", features = ["importer"] }
+serde_json = "1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "component:content-importer"
+
+[package.metadata.component.dependencies]
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+debug = false

@@ -1,0 +1,22 @@
+[package]
+name = "bex-core"
+version = "0.1.0"
+edition = "2021"
+description = "Core SDK for building Bloomee Extensions (BEX)"
+license = "MIT"
+
+[dependencies]
+wit-bindgen = "0.44.0"
+wit-bindgen-rt = { version = "0.44.0", features = ["bitflags"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+
+[features]
+default = []
+resolver   = []
+lyrics     = []
+scrobbler  = []
+chart      = []
+suggestion = []
+importer   = []

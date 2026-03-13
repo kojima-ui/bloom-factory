@@ -1,0 +1,120 @@
+/// @package component:chart-provider
+/// @description Standard interface for music charts and trends in Bloomee.
+/// This interface handles chart listings, item rankings, and trend data.
+package component:chart-provider;
+
+interface utils {
+    enum http-method {
+        get,
+        post,
+        put,
+        delete,
+        head,
+        patch,
+        options,
+    }
+
+    record http-response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    record request-options {
+        method: http-method,
+        headers: option<list<tuple<string, string>>>,
+        body: option<list<u8>>,
+        timeout-seconds: option<u32>,
+    }
+
+    http-request: func(url: string, options: request-options) -> result<http-response, string>;
+    random-number: func() -> u64;
+    current-unix-timestamp: func() -> u64;
+    storage-set: func(key: string, value: string) -> bool;
+    storage-get: func(key: string) -> option<string>;
+    storage-delete: func(key: string) -> bool;
+}
+
+interface types {
+    record artwork {
+        url: string,
+        url-low: option<string>,
+        url-high: option<string>,
+    }
+    
+    record track-item {
+        id: string,
+        title: string,
+        artists: string,        // Comma-separated list of artist names
+        album: option<string>,        // Just album title for light chart displays
+        thumbnail: option<artwork>,    // Primary artwork object
+        duration-ms: option<u64>,
+        is-explicit: bool,
+    }
+
+    /// Album entry with minimal info for chart lists
+    record album-item {
+        id: string,
+        title: string,
+        artists: list<string>,
+        thumbnail: option<artwork>,
+        year: option<u32>,
+    }
+
+    /// Artist entry with minimal info for chart lists
+    record artist-item {
+        id: string,
+        name: string,
+        thumbnail: option<artwork>,
+    }
+
+    /// Unified media variant for mixed-type charts
+    variant media-item {
+        track(track-item),
+        album(album-item),
+        artist(artist-item),
+    }
+}
+
+interface chart-api {
+    use types.{media-item, artwork};
+
+    /// Header information for a discoverable chart (e.g. "Top 50 Global")
+    record chart-summary {
+        id: string,
+        title: string,
+        description: option<string>,  // Can include period/freshness info
+        thumbnail: option<artwork>,
+    }
+
+    enum trend {
+        up,
+        down,
+        same,
+        new-entry,
+        re-entry,
+        unknown,
+    }
+
+    /// A single ranked entry within a specific chart
+    record chart-item {
+        item: media-item,
+        rank: u32,
+        trend: trend,
+        change: option<u32>,          // Magnitude of position change
+        peak-rank: option<u32>,
+        weeks-on-chart: option<u32>,
+    }
+
+    /// Returns a list of all charts available from this provider.
+    get-charts: func() -> result<list<chart-summary>, string>;
+
+    /// Returns the current ranked items for a specific chart.
+    get-chart-details: func(chart-id: string) -> result<list<chart-item>, string>;
+}
+
+world chart-provider {
+    import utils;
+    export types;
+    export chart-api;
+}

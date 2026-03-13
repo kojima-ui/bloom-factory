@@ -1,0 +1,86 @@
+/// @package component:search-suggestion-provider
+/// @description Standard interface for search suggestions and autocomplete in Bloomee.
+/// Supports both minimal text-based queries and advanced entity-based visual suggestions.
+package component:search-suggestion-provider;
+
+interface utils {
+    enum http-method { get, post, put, delete, head, patch, options }
+
+    record http-response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    record request-options {
+        method: http-method,
+        headers: option<list<tuple<string, string>>>,
+        body: option<list<u8>>,
+        timeout-seconds: option<u32>,
+    }
+
+    http-request: func(url: string, options: request-options) -> result<http-response, string>;
+    random-number: func() -> u64;
+    current-unix-timestamp: func() -> u64;
+    storage-set: func(key: string, value: string) -> bool;
+    storage-get: func(key: string) -> option<string>;
+    storage-delete: func(key: string) -> bool;
+    log: func(message: string);
+}
+
+interface types {
+    enum entity-type {
+        track,
+        album,
+        artist,
+        playlist,
+        genre,
+        unknown
+    }
+
+    record artwork {
+        url: string,
+        url-low: option<string>,
+    }
+
+    /// Represents an advanced visual suggestion (e.g. clicking takes you directly to the artist/track)
+    record entity-suggestion {
+        id: string,
+        title: string,
+        subtitle: option<string>,    // e.g. "Artist name" for a track
+        kind: entity-type,
+        thumbnail: option<artwork>,
+    }
+
+    /// Unified suggestion variant
+    variant suggestion {
+        /// Minimal type: just text autocomplete (e.g. user types "Tay" -> returns "Taylor Swift")
+        query(string),
+        /// Advanced type: direct navigation entity
+        entity(entity-suggestion),
+    }
+
+    record suggestion-options {
+        limit: option<u8>,
+        /// If true, the provider will try to return rich entities instead of just strings.
+        include-entities: bool,
+        /// Filter for specific types of entities, if applicable.
+        allowed-types: option<list<entity-type>>,
+    }
+}
+
+interface suggestion-api {
+    use types.{suggestion, suggestion-options};
+
+    /// Gets realtime search suggestions based on partial user input.
+    get-suggestions: func(query: string, options: suggestion-options) -> result<list<suggestion>, string>;
+    
+    /// Returns default trending or history-based suggestions when the search bar is focused but empty.
+    get-default-suggestions: func(options: suggestion-options) -> result<list<suggestion>, string>;
+}
+
+world search-suggestion-provider {
+    import utils;
+    export types;
+    export suggestion-api;
+}

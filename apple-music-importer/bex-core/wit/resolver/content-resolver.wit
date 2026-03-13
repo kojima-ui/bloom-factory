@@ -1,0 +1,234 @@
+/// @package component:content-resolver
+/// @description Standard interface for music content resolution in Bloomee.
+/// This interface handles track metadata, search, albums, artists, and discovery.
+package component:content-resolver;
+
+interface utils {
+    enum http-method {
+        get,
+        post,
+        put,
+        delete,
+        head,
+        patch,
+        options,
+    }
+
+    record http-response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    record request-options {
+        method: http-method,
+        headers: option<list<tuple<string, string>>>,
+        body: option<list<u8>>,
+        timeout-seconds: option<u32>,
+    }
+
+    http-request: func(url: string, options: request-options) -> result<http-response, string>;
+    random-number: func() -> u64;
+    current-unix-timestamp: func() -> u64;
+    storage-set: func(key: string, value: string) -> bool;
+    storage-get: func(key: string) -> option<string>;
+    storage-delete: func(key: string) -> bool;
+}
+
+interface types {
+    enum image-layout {
+        square,      // 1:1 (Album art, Artist)
+        portrait,    // 2:3 (Posters)
+        landscape,   // 16:9 (Backdrops)
+        banner,      // 3:1 (Wide banners)
+        circular,    // 1:1 (Artist profiles)
+    }
+
+    record artwork {
+        url: string,
+        url-low: option<string>,
+        url-high: option<string>,
+        layout: image-layout,
+    }
+
+    record artist-summary {
+        id: string,
+        name: string,
+        thumbnail: option<artwork>,
+        subtitle: option<string>,
+        url: option<string>, 
+    }
+
+    record album-summary {
+        id: string,
+        title: string,
+        artists: list<artist-summary>,
+        thumbnail: option<artwork>,
+        subtitle: option<string>,
+        year: option<u32>,
+        url: option<string>,
+    }
+
+    record track {
+        id: string,
+        title: string,
+        artists: list<artist-summary>,
+        album: option<album-summary>,
+        duration-ms: option<u64>,
+        thumbnail: artwork,
+        url: option<string>,
+        is-explicit: bool,
+        lyrics: option<lyrics>,
+    }
+
+    record lyrics {
+        plain: option<string>,
+        synced: option<string>, // Timed lyrics in standard format (e.g., LRC)
+        copyright: option<string>,
+    }
+
+    /// Primary playlist metadata
+    record playlist-summary {
+        id: string,
+        title: string,
+        owner: option<string>, 
+        thumbnail: artwork,
+        url: option<string>,
+    }
+
+    /// Generic wrapper for mixed content lists
+    variant media-item {
+        track(track),
+        album(album-summary),
+        artist(artist-summary),
+        playlist(playlist-summary),
+    }
+
+    record paged-tracks {
+        items: list<track>,
+        next-page-token: option<string>,
+    }
+
+    record paged-albums {
+        items: list<album-summary>,
+        next-page-token: option<string>,
+    }
+
+    record paged-media-items {
+        items: list<media-item>,
+        next-page-token: option<string>,
+    }
+
+    /// Identifies the semantic content of an audio segment.
+    enum segment-kind {
+        chapter,
+        sponsor,
+        intro,
+        outro,
+        interaction,
+        silence,
+    }
+
+    /// A time-bound section of the audio track (e.g. chapter, sponsor block).
+    record media-segment {
+        start-ms: u64,
+        end-ms: u64,
+        kind: segment-kind,
+        title: option<string>,
+    }
+}
+
+interface data-source {
+    use types.{track, album-summary, artist-summary, playlist-summary, media-item, paged-tracks, paged-albums, paged-media-items, artwork, media-segment};
+
+    get-album-details: func(id: string) -> result<album-details, string>;
+    more-album-tracks: func(id: string, page-token: string) -> result<paged-tracks, string>;
+
+    get-artist-details: func(id: string) -> result<artist-details, string>;
+    more-artist-albums: func(id: string, page-token: string) -> result<paged-albums, string>;
+
+    get-playlist-details: func(id: string) -> result<playlist-details, string>;
+    more-playlist-tracks: func(id: string, page-token: string) -> result<paged-tracks, string>;
+
+    get-streams: func(track-id: string) -> result<list<stream-source>, string>;
+    get-segments: func(track-id: string) -> result<list<media-segment>, string>;
+    search: func(query: string, filter: search-filter, page-token: option<string>) -> result<paged-media-items, string>;
+    
+    /// Returns a list of related tracks/radio based on a seed ID
+    get-radio-tracks: func(reference-id: string, page-token: option<string>) -> result<paged-tracks, string>;
+    
+    record album-details {
+        summary: album-summary,
+        tracks: paged-tracks,
+        description: option<string>,
+    }
+
+    record artist-details {
+        summary: artist-summary,
+        top-tracks: list<track>,
+        albums: paged-albums,
+        related-artists: list<artist-summary>,
+        description: option<string>,
+    }
+
+    record playlist-details {
+        summary: playlist-summary,
+        tracks: paged-tracks,
+        description: option<string>,
+    }
+
+    enum quality {
+        low,     // ~96kbps
+        medium,  // ~160kbps
+        high,    // ~320kbps
+        lossless // FLAC/WAV
+    }
+
+    record stream-source {
+        url: string,
+        quality: quality,
+        format: string, // e.g. "mp3", "aac", "flac"
+        headers: option<list<tuple<string, string>>>,
+        expires-at: option<u64>,
+    }
+
+    enum search-filter {
+        all,
+        track,
+        album,
+        artist,
+        playlist
+    }
+}
+
+interface discovery {
+    use types.{media-item};
+
+    enum section-type {
+        carousel,
+        grid,
+        vlist
+    }
+
+    record section {
+        id: string,
+        title: string,
+        subtitle: option<string>,
+        card-type: section-type,
+        items: list<media-item>,
+        more-link: option<string>, // Pagination token for full category view
+    }
+
+    /// Returns structured layout sections for the discovery/home feed
+    get-home-sections: func() -> result<list<section>, string>;
+    
+    /// Detailed pagination for a specific landing section
+    load-more: func(section-id: string, page-token: string) -> result<list<media-item>, string>;
+}
+
+world content-resolver {
+    import utils;
+    export types;
+    export data-source;
+    export discovery;
+}

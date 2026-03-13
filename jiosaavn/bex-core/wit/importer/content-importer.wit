@@ -1,0 +1,87 @@
+/// @package component:content-importer
+/// @description Standard interface for importing music metadata from external sources
+/// (Spotify, YT Music, YouTube, etc.) — intended for fuzzy-matching into Bloomee.
+package component:content-importer;
+
+interface utils {
+    enum http-method {
+        get,
+        post,
+        put,
+        delete,
+        head,
+        patch,
+        options,
+    }
+
+    record http-response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    record request-options {
+        method: http-method,
+        headers: option<list<tuple<string, string>>>,
+        body: option<list<u8>>,
+        timeout-seconds: option<u32>,
+    }
+
+    http-request: func(url: string, options: request-options) -> result<http-response, string>;
+    random-number: func() -> u64;
+    current-unix-timestamp: func() -> u64;
+    storage-set: func(key: string, value: string) -> bool;
+    storage-get: func(key: string) -> option<string>;
+    storage-delete: func(key: string) -> bool;
+    log: func(message: string);
+}
+
+interface types {
+    enum collection-type {
+        playlist,
+        album,
+    }
+
+    record collection-summary {
+        title: string,
+        kind: collection-type,
+        description: option<string>,
+        owner: option<string>,
+        thumbnail-url: option<string>,
+        track-count: option<u32>,
+    }
+
+    record track-item {
+        title: string,
+        artists: list<string>,
+        thumbnail-url: option<string>,
+        album-title: option<string>,
+        duration-ms: option<u64>,
+        is-explicit: option<bool>,
+        url: option<string>,
+        source-id: option<string>,
+    }
+
+    record tracks {
+        items: list<track-item>,
+    }
+}
+
+interface importer {
+    use types.{collection-summary, tracks};
+
+    /// Returns true if this plugin can handle the provided URL.
+    can-handle-url: func(url: string) -> bool;
+
+    /// Fetches collection metadata for UI preview before import begins.
+    get-collection-info: func(url: string) -> result<collection-summary, string>;
+
+    /// Fetches all track metadata for fuzzy matching into Bloomee.
+    get-tracks: func(url: string) -> result<tracks, string>;
+}
+
+world content-importer {
+    import utils;
+    export types;
+    export importer;
+}

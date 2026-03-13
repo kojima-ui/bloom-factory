@@ -1,0 +1,97 @@
+name: BEX Factory Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag to publish
+        required: false
+        default: factory-latest
+      release_name:
+        description: Release title to publish
+        required: false
+        default: Bloomee Plugin Factory
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bex-factory-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-component
+        run: cargo install cargo-component --locked
+
+      - name: Install bex
+        run: cargo install --git "https://github.com/HemantKArya/bloomee-ext" --bin bex --locked
+
+      - name: Build and pack all plugins
+        run: bex pack-all --dir . --output-dir plugins --skip-failures
+
+      - name: Count packed plugins
+        id: packed
+        shell: bash
+        run: |
+          count=$(find plugins -maxdepth 1 -type f -name "*.bex" | wc -l)
+          echo "bex_count=$count" >> "$GITHUB_OUTPUT"
+          echo "Found $count .bex file(s)"
+
+      - name: Finalize bex-factory.json
+        if: steps.packed.outputs.bex_count != '0'
+        shell: bash
+        run: |
+          stamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          base="https://github.com/${{ github.repository }}/releases/download/${{ inputs.release_tag || 'factory-latest' }}"
+          jq --arg base "$base" --arg stamp "$stamp" '
+            .generated_at = $stamp
+            | .plugins |= map(. + {
+                last_updated: $stamp,
+                download_url: ($base + "/" + .asset_name),
+                released_at: $stamp
+              })
+          ' plugins/bex-factory.json > bex-factory.json
+
+      - name: Publish GitHub release
+        if: steps.packed.outputs.bex_count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          tag="${{ inputs.release_tag || 'factory-latest' }}"
+          name="${{ inputs.release_name || 'Bloomee Plugin Factory' }}"
+          gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+          gh release create "$tag" plugins/*.bex bex-factory.json \
+            --title "$name" \
+            --notes "Latest auto-built Bloomee plugins"
+
+      - name: Commit updated bex-factory.json
+        if: steps.packed.outputs.bex_count != '0'
+        shell: bash
+        run: |
+          if git diff --quiet -- bex-factory.json; then
+            echo "No changes to bex-factory.json - skipping commit."
+            exit 0
+          fi
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add bex-factory.json
+          git commit -m "chore: update bexfactory index [skip ci]"
+          git push

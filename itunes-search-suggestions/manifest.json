@@ -1,0 +1,12 @@
+{
+  "manifest_version": "1.0",
+  "id": "search-suggestion-provider.bloomfactory.itunessearchsuggestions",
+  "name": "itunes-search-suggestions",
+  "version": "1",
+  "type": "search-suggestion-provider",
+  "thumbnail_url": "https://music.apple.com/favicon.ico",
+  "publisher": {"name": "bloomfactory"},
+  "description": "Fast search suggestions powered by iTunes Search API and Apple Music RSS.",
+  "created_at": "2026-03-13T06:48:23.2176719Z",
+  "last_updated": "2026-03-13T06:48:23.2176719Z"
+}

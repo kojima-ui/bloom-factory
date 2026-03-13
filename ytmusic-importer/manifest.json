@@ -1,0 +1,12 @@
+{
+  "manifest_version": "1.0",
+  "id": "content-importer.bloomfactory.ytmusicimporter",
+  "name": "ytmusic-importer",
+  "version": "1",
+  "type": "content-importer",
+  "thumbnail_url": "https://icon-icons.com/download-file?file=https%3A%2F%2Fimages.icon-icons.com%2F2657%2FPNG%2F256%2Fyoutube_music_icon_161084.png&id=161084&pack_or_individual=pack",
+  "publisher": {"name": "bloomfactory"},
+  "description": "Import YouTube Music playlists and albums into Bloomee.",
+  "created_at": "2026-03-13T06:51:25.1754671Z",
+  "last_updated": "2026-03-13T06:51:25.1754671Z"
+}

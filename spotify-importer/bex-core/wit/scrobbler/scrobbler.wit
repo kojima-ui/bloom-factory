@@ -1,0 +1,122 @@
+/// @package component:scrobbler
+/// @description Standard interface for scrobbling and play tracking in Bloomee.
+/// This interface handles user authentication and playback event synchronization.
+package component:scrobbler;
+
+interface utils {
+    enum http-method {
+        get,
+        post,
+        put,
+        delete,
+        head,
+        patch,
+        options,
+    }
+
+    record http-response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    record request-options {
+        method: http-method,
+        headers: option<list<tuple<string, string>>>,
+        body: option<list<u8>>,
+        timeout-seconds: option<u32>,
+    }
+
+    http-request: func(url: string, options: request-options) -> result<http-response, string>;
+    random-number: func() -> u64;
+    current-unix-timestamp: func() -> u64;
+    storage-set: func(key: string, value: string) -> bool;
+    storage-get: func(key: string) -> option<string>;
+    storage-delete: func(key: string) -> bool;
+}
+
+interface types {
+    enum image-layout {
+        square,
+        portrait,
+        landscape,
+        banner,
+        circular,
+    }
+
+    record artwork {
+        url: string,
+        layout: image-layout,
+    }
+
+    record artist-summary {
+        id: string,
+        name: string,
+        thumbnails: list<artwork>,
+        url: option<string>,
+    }
+
+    record album-summary {
+        id: string,
+        title: string,
+        artists: list<artist-summary>,
+        thumbnails: list<artwork>,
+        year: option<u32>,
+        url: option<string>,
+    }
+
+    record lyrics {
+        plain: option<string>,
+        synced: option<string>, 
+        copyright: option<string>,
+    }
+
+    record track {
+        id: string,
+        title: string,
+        artists: list<artist-summary>,
+        album: option<album-summary>,
+        duration-ms: option<u64>,
+        thumbnails: list<artwork>,
+        url: option<string>,
+        is-explicit: bool,
+        lyrics: option<lyrics>,
+    }
+}
+
+interface scrobbler-api {
+    use types.{track};
+
+    enum auth-status {
+        authenticated,
+        guest,
+    }
+
+    /// Returns the current authentication state of the scrobbler.
+    get-status: func() -> auth-status;
+
+    /// Returns the URL for browser-based authorization (OAuth).
+    get-auth-url: func() -> string;
+
+    /// Exchanges auth codes/tokens for a persistent session key.
+    complete-auth: func() -> result<bool, string>;
+
+    /// Clears the current session and persistent tokens.
+    logout: func();
+
+    /// Notifies the scrobbler of the currently playing track.
+    now-playing: func(track: track) -> result<bool, string>;
+
+    /// Submits a permanent scrobble entry for a track.
+    scrobble: func(track: track) -> result<bool, string>;
+
+    /// Toggles "Like" status on the remote service.
+    like: func(track: track) -> result<bool, string>;
+    unlike: func(track: track) -> result<bool, string>;
+}
+
+world scrobbler {
+    import utils;
+    export types;
+    export scrobbler-api;
+}

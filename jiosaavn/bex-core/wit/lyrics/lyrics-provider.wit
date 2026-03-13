@@ -1,0 +1,95 @@
+/// @package component:lyrics-provider
+/// @description Standard interface for music lyrics provision in Bloomee.
+/// Supports automated metadata matching and manual lookup by ID.
+package component:lyrics-provider;
+
+interface utils {
+    enum http-method { get, post, put, delete, head, patch, options }
+
+    record http-response {
+        status: u16,
+        headers: list<tuple<string, string>>,
+        body: list<u8>,
+    }
+
+    record request-options {
+        method: http-method,
+        headers: option<list<tuple<string, string>>>,
+        body: option<list<u8>>,
+        timeout-seconds: option<u32>,
+    }
+
+    http-request: func(url: string, options: request-options) -> result<http-response, string>;
+    random-number: func() -> u64;
+    current-unix-timestamp: func() -> u64;
+    storage-set: func(key: string, value: string) -> bool;
+    storage-get: func(key: string) -> option<string>;
+    storage-delete: func(key: string) -> bool;
+}
+
+interface types {
+    enum lyrics-sync-type { none, line, syllable }
+
+    record lyrics-token {
+        offset-ms: u32,
+        text: string,
+    }
+
+    record lyrics-line {
+        start-ms: u32,
+        duration-ms: option<u32>,
+        content: string,
+        tokens: option<list<lyrics-token>>,
+    }
+
+    record lyrics {
+        plain: option<string>,
+        lrc: option<string>,
+        lines: option<list<lyrics-line>>,
+        is-instrumental: bool,
+        sync-type: lyrics-sync-type,
+    }
+
+    record lyrics-metadata {
+        source: option<string>,
+        author: option<string>,
+        language: option<string>,
+        copyright: option<string>,
+        is-verified: bool,
+    }
+
+    record track-metadata {
+        title: string,
+        artist: string,
+        album: option<string>,
+        duration-ms: option<u64>,
+    }
+
+    record lyrics-match {
+        id: string,
+        title: string,
+        artist: string,
+        album: option<string>,
+        duration-ms: option<u64>,
+        sync-type: lyrics-sync-type,
+    }
+}
+
+interface lyrics-api {
+    use types.{lyrics, lyrics-metadata, track-metadata, lyrics-match};
+
+    /// Matches the best possible lyrics for a given track metadata.
+    get-lyrics: func(metadata: track-metadata) -> result<option<tuple<lyrics, lyrics-metadata>>, string>;
+
+    /// Searches for lyrics by a text query (typically for manual selection).
+    search: func(query: string) -> result<list<lyrics-match>, string>;
+
+    /// Retrieves specific lyrics content by a provider-specific ID.
+    get-lyrics-by-id: func(id: string) -> result<tuple<lyrics, lyrics-metadata>, string>;
+}
+
+world lyrics-provider {
+    import utils;
+    export types;
+    export lyrics-api;
+}

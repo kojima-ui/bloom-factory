@@ -1,0 +1,12 @@
+{
+  "manifest_version": "1.0",
+  "id": "content-importer.bloomfactory.jiosaavnimporter",
+  "name": "jiosaavn-importer",
+  "version": "1",
+  "type": "content-importer",
+  "thumbnail_url": "https://www.jiosaavn.com/favicon.ico",
+  "publisher": {"name": "bloomfactory"},
+  "description": "Import Jiosaavn playlists and albums into bloomee.",
+  "created_at": "2026-03-13T06:51:07.1019608Z",
+  "last_updated": "2026-03-13T06:51:07.1019608Z"
+}
