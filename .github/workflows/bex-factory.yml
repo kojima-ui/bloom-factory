@@ -38,10 +38,37 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-component
-        run: cargo install cargo-component --locked
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Attempting to fetch pre-built cargo-component..."
+          # Download the latest Linux x86_64 tarball from the official bytecodealliance repo
+          if gh release download --repo bytecodealliance/cargo-component --pattern "*x86_64-unknown-linux-gnu.tar.gz" --dir .; then
+            tar -xzf *x86_64-unknown-linux-gnu.tar.gz
+            # Locate the extracted binary, make it executable, and move it to cargo's bin directory
+            find . -type f -name "cargo-component" -exec chmod +x {} \; -exec mv {} ~/.cargo/bin/ \;
+            rm *x86_64-unknown-linux-gnu.tar.gz
+            echo "Successfully installed pre-built cargo-component."
+          else
+            echo "Failed to download pre-built binary. Falling back to cargo install..."
+            cargo install cargo-component --locked
+          fi
 
       - name: Install bex
-        run: cargo install --git "https://github.com/HemantKArya/bloomee-ext" --bin bex --locked
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Attempting to fetch pre-built bex from HemantKArya/bloomee-ext..."
+          if gh release download --repo HemantKArya/bloomee-ext --pattern "bex-linux-x86_64.tar.gz" --dir .; then
+            tar -xzf bex-linux-x86_64.tar.gz
+            chmod +x bex
+            mv bex ~/.cargo/bin/
+            rm bex-linux-x86_64.tar.gz
+            echo "Successfully installed pre-built bex."
+          else
+            echo "Failed to download pre-built binary. Falling back to cargo install..."
+            cargo install --git "https://github.com/HemantKArya/bloomee-ext" --bin bex --locked
+          fi
 
       - name: Build and pack all plugins
         run: bex pack-all --dir . --output-dir plugins --skip-failures
