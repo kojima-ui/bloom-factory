@@ -29,7 +29,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # --- NEW STEP: Define unique release tag and name ---
       - name: Set Release Details
         id: vars
         shell: bash
@@ -93,12 +92,24 @@ jobs:
       - name: Finalize bex-factory.json
         if: steps.packed.outputs.bex_count != '0'
         shell: bash
+        env:
+          # --- YOU CAN MANUALLY EDIT THESE THREE VARIABLES (These names are default text are not official.) ---
+          FACTORY_NAME: "BloomFactory (Unofficial + Community)"
+          FACTORY_DESCRIPTION: "Plugin repository for Bloomee by community." # Leave empty for null
+          FACTORY_THUMBNAIL_URL: "" # Leave empty for null
         run: |
           stamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          # Using the dynamic tag generated in the 'vars' step
           base="https://github.com/${{ github.repository }}/releases/download/${{ steps.vars.outputs.tag }}"
-          jq --arg base "$base" --arg stamp "$stamp" '
-            .generated_at = $stamp
+
+          jq --arg base "$base" \
+             --arg stamp "$stamp" \
+             --arg name "$FACTORY_NAME" \
+             --arg desc "$FACTORY_DESCRIPTION" \
+             --arg thumb "$FACTORY_THUMBNAIL_URL" '
+            .name = $name
+            | .description = (if $desc == "" then null else $desc end)
+            | .thumbnail_url = (if $thumb == "" then null else $thumb end)
+            | .generated_at = $stamp
             | .plugins |= map(. + {
                 last_updated: $stamp,
                 download_url: ($base + "/" + .asset_name),
@@ -112,11 +123,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          # Using the dynamic tag and name generated in the 'vars' step
           tag="${{ steps.vars.outputs.tag }}"
           name="${{ steps.vars.outputs.name }}"
 
-          # Delete only if a user manually triggers a re-run of the exact same job number
           gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
 
           gh release create "$tag" plugins/*.bex bex-factory.json \
