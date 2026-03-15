@@ -141,6 +141,8 @@ interface types {
 interface data-source {
     use types.{track, album-summary, artist-summary, playlist-summary, media-item, paged-tracks, paged-albums, paged-media-items, artwork, media-segment};
 
+    get-track-details: func(id: string) -> result<track, string>;
+
     get-album-details: func(id: string) -> result<album-details, string>;
     more-album-tracks: func(id: string, page-token: string) -> result<paged-tracks, string>;
 

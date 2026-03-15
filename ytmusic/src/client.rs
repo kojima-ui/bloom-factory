@@ -8,7 +8,7 @@ use bex_core::resolver::data_source::{
     SearchFilter, StreamSource,
 };
 use bex_core::resolver::discovery::Section;
-use bex_core::resolver::types::MediaItem;
+use bex_core::resolver::types::{Artwork, ArtistSummary, ImageLayout, MediaItem, Track};
 use crate::cipher;
 use crate::mapper;
 use crate::parser;
@@ -511,6 +511,110 @@ pub fn load_more_items(
     let data = ytm_post_continuation("browse", page_token, body)?;
     let (items, _) = parser::parse_home_more_items(&data);
     Ok(mapper::to_media_items(&items))
+}
+
+pub fn get_track_details(video_id: &str) -> Result<Track, anyhow::Error> {
+    let body = json!({
+        "context": build_context(),
+        "videoId": video_id,
+        "contentCheckOk": true,
+        "racyCheckOk": true
+    });
+
+    let data = ytm_post("player", body)?;
+    let details = data
+        .get("videoDetails")
+        .ok_or_else(|| anyhow::anyhow!("Missing videoDetails for {video_id}"))?;
+
+    let title = details
+        .get("title")
+        .and_then(|v| v.as_str())
+        .filter(|v| !v.is_empty())
+        .ok_or_else(|| anyhow::anyhow!("Missing title for {video_id}"))?
+        .to_string();
+
+    let artist_name = details
+        .get("author")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Unknown Artist")
+        .to_string();
+    let channel_id = details
+        .get("channelId")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
+
+    let duration_ms = details
+        .get("lengthSeconds")
+        .and_then(|v| v.as_str())
+        .and_then(|s| s.parse::<u64>().ok())
+        .map(|secs| secs.saturating_mul(1000));
+
+    let thumbnail = player_thumbnail_to_artwork(details, video_id);
+
+    Ok(Track {
+        id: video_id.to_string(),
+        title,
+        artists: vec![ArtistSummary {
+            id: channel_id.clone(),
+            name: artist_name,
+            thumbnail: None,
+            subtitle: None,
+            url: if channel_id.is_empty() {
+                None
+            } else {
+                Some(format!("https://music.youtube.com/channel/{channel_id}"))
+            },
+        }],
+        album: None,
+        duration_ms,
+        thumbnail,
+        url: Some(format!("https://music.youtube.com/watch?v={video_id}")),
+        is_explicit: false,
+        lyrics: None,
+    })
+}
+
+fn player_thumbnail_to_artwork(details: &Value, video_id: &str) -> Artwork {
+    let thumbs = details
+        .get("thumbnail")
+        .and_then(|t| t.get("thumbnails"))
+        .and_then(|a| a.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    if thumbs.is_empty() {
+        let fallback = crate::parser::youtube_thumbnail_fallback(video_id);
+        let low = fallback.first().map(|(u, _)| u.clone());
+        let high = fallback.last().map(|(u, _)| u.clone());
+        let url = high.clone().or_else(|| low.clone()).unwrap_or_default();
+        return Artwork {
+            url,
+            url_low: low,
+            url_high: high,
+            layout: ImageLayout::Landscape,
+        };
+    }
+
+    let mut sized: Vec<(String, u64)> = thumbs
+        .iter()
+        .filter_map(|t| {
+            let url = t.get("url").and_then(|u| u.as_str())?.to_string();
+            let w = t.get("width").and_then(|w| w.as_u64()).unwrap_or(0);
+            Some((url, w))
+        })
+        .collect();
+    sized.sort_by_key(|(_, w)| *w);
+
+    let low = sized.first().map(|(u, _)| u.clone());
+    let high = sized.last().map(|(u, _)| u.clone());
+    let url = high.clone().or_else(|| low.clone()).unwrap_or_default();
+    Artwork {
+        url,
+        url_low: low,
+        url_high: high,
+        layout: ImageLayout::Landscape,
+    }
 }
 
 // ---------------------------------------------------------------------------

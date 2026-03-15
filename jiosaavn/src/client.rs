@@ -9,7 +9,7 @@ use bex_core::resolver::data_source::{
 use bex_core::resolver::discovery::{Section, SectionType};
 use bex_core::resolver::types::{
     AlbumSummary, ArtistSummary, Artwork, ImageLayout, MediaItem, PagedAlbums, PagedMediaItems,
-    PagedTracks,
+    PagedTracks, Track,
 };
 use crate::mapper;
 use crate::types::{JioResponse, SearchResponse};
@@ -552,6 +552,24 @@ pub fn get_stream_source(id: &str) -> Result<Vec<StreamSource>> {
     }
 
     Err(anyhow!("Song not found"))
+}
+
+pub fn get_track_details(id: &str) -> Result<Track> {
+    let params = format!("__call=song.getDetails&pids={}", id);
+    let json_str = make_request(&params, true)?;
+    let data: Value = serde_json::from_str(&json_str)?;
+
+    let song_obj = if let Some(songs) = data.get("songs").and_then(|s| s.as_array()) {
+        songs.first().cloned()
+    } else if let Some(obj) = data.get(id) {
+        Some(obj.clone())
+    } else {
+        None
+    }
+    .ok_or_else(|| anyhow!("Song not found"))?;
+
+    let item: JioResponse = serde_json::from_value(song_obj)?;
+    Ok(mapper::map_to_track(&item))
 }
 
 pub fn get_playlist_details(id: &str) -> Result<PlaylistDetails> {

@@ -32,6 +32,10 @@ impl DiscoveryGuest for Component {
 }
 
 impl DataSourceGuest for Component {
+    fn get_track_details(id: String) -> Result<bex_core::resolver::types::Track, String> {
+        client::get_track_details(&id).map_err(|e| e.to_string())
+    }
+
     fn get_album_details(id: String) -> Result<AlbumDetails, String> {
         client::get_album_details(&id).map_err(|e| e.to_string())
     }
