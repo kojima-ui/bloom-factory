@@ -2,7 +2,7 @@
   "manifest_version": "1.0",
   "id": "content-resolver.bloomfactory.jisaavn",
   "name": "jisaavn",
-  "version": "1",
+  "version": "2",
   "type": "content-resolver",
   "thumbnail_url": "https://www.jiosaavn.com/favicon.ico",
   "publisher": { "name": "bloomfactory" },
