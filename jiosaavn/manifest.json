@@ -5,9 +5,10 @@
   "version": "1",
   "type": "content-resolver",
   "thumbnail_url": "https://www.jiosaavn.com/favicon.ico",
-  "publisher": {"name": "bloomfactory"},
+  "publisher": { "name": "bloomfactory" },
   "description": "Jiosaavn based content provider.",
   "resolver": true,
+  "country_allowlist": ["IN"],
   "created_at": "2026-03-13T06:46:28.3072614Z",
   "last_updated": "2026-03-13T06:46:28.3072614Z"
 }
