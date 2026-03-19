@@ -2,11 +2,11 @@
   "manifest_version": "1.0",
   "id": "content-importer.bloomfactory.spotifyimporter",
   "name": "spotify-importer",
-  "version": "1",
+  "version": "2",
   "type": "content-importer",
   "thumbnail_url": "https://www.scdn.co/i/_global/favicon.png",
   "publisher": {"name": "bloomfactory"},
-  "description": "Import Spotify playlists and albums into Bloomee (no login required, up to 50 tracks via embed scraping)",
+  "description": "Import Spotify playlists and albums into Bloomee with robust Spotify web token extraction, API-first fetching, and embed fallback",
   "created_at": "2026-03-13T06:52:27.660671Z",
   "last_updated": "2026-03-13T06:52:27.660671Z"
 }
